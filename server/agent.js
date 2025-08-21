@@ -15,12 +15,13 @@ import z from "zod";
 
 dotenv.config();
 
-const video_id = '9w4jvRLR7M8'
+const video_id = 'vr1JL6Fi6K4'
 const app = express();
 const port = 3000;
 
-const video1 = data[0];
-await addYTVideoToVectorStore(video1);
+// const video1 = data[0];
+// await addYTVideoToVectorStore(data[0]);
+// await addYTVideoToVectorStore(data[1]);
 
 
 const llm = new ChatGoogleGenerativeAI({
@@ -32,41 +33,75 @@ const llm = new ChatGoogleGenerativeAI({
 // retrieval tool
 const retrieveTool = tool(
   async ({ query }, {configurable: {video_id}}) => {
-    console.log("retrieved docs for query-----------------------");
-    console.log(query);
-    console.log(video_id);
+    console.log("=== Retrieval Tool Called ===");
+    console.log("Query:", query);
+    console.log("Video ID:", video_id);
     
-    // retrieve the most relevant chunks
-      const retrievedDocs = await vectorStore.similaritySearch(query, 3, (doc)=>doc.metadata.video_id==video_id);
-      console.log(retrievedDocs);
+    try {
+      // Fix the filter syntax - it should be a function
+      const retrievedDocs = await vectorStore.similaritySearch(
+        query, 
+        5, // Increase to 5 for better coverage
+        {video_id}
+      );
       
+      console.log(`Found ${retrievedDocs.length} relevant chunks`);
+      
+      if (retrievedDocs.length === 0) {
+        return `No content found for video ${video_id}. The video might not be in the database or the search query didn't match any content.`;
+      }
+      
+      // Add context to the response
       const serializedDocs = retrievedDocs
-      .map((doc) => doc.pageContent)
-      .join("\n");
+        .map((doc, index) => `[Segment ${index + 1}]\n${doc.pageContent}`)
+        .join("\n\n---\n\n");
 
-    return serializedDocs;
+      return `Here are the relevant segments from the video transcript:\n\n${serializedDocs}`;
+      
+    } catch (error) {
+      console.error("Error in retrieval:", error);
+      return "Error retrieving video content. Please try again.";
+    }
   },
   {
-    name: "retrieve",
-    description: "Retrieve the most relevant chunks of text from the transcript of a youtube video.",
+    name: "retrieve_video_content",
+    description: `This tool searches and retrieves relevant segments from a YouTube video transcript.
+
+    WHEN TO USE THIS TOOL:
+    - ANY question about what is explained, discussed, or shown in a video
+    - Questions about video content, topics, themes, or specific information
+    - Requests for summaries or overviews of the video
+    - Questions about specific people, events, or concepts mentioned in the video
+    
+    HOW TO USE:
+    - For general video overview: use queries like "main topics content summary overview"
+    - For specific topics: use the exact terms from the user's question
+    - For people mentioned: include their names in the query
+    - Always cast a wide net with your search terms to ensure comprehensive results
+    
+    WHAT IT RETURNS:
+    - Relevant transcript segments that match the search query
+    - Multiple segments are returned to provide context
+    - Use all returned segments to form a comprehensive answer
+    
+    IMPORTANT: This tool MUST be used for ANY question about video content. Never answer questions about videos without first retrieving the actual transcript content.`,
+    
     schema: z.object({
-      query: z.string(),
+      query: z.string().describe("Search keywords. For general questions use broad terms like 'main topics summary content'. For specific questions, include all relevant terms from the user's question."),
     }),
   }
 );
 
 const memorySaver = new MemorySaver();
 
-const agent = createReactAgent({
+// console.log("Testing vector store...");
+// const testDocs = await vectorStore.similaritySearch("video", 3);
+// console.log(testDocs);
+// console.log("Test search found", testDocs.length, "documents");
+
+export const agent = createReactAgent({
   llm,
   tools: [retrieveTool],
   checkpointer: memorySaver,
 });
 
-const result = await agent.invoke(
-  {
-    messages: [{ role: "user", content: "who was norris? and what i can learn from this video on youtube with transcript" }],
-  },
-  { configurable: { thread_id: 1, video_id } }
-);
-console.log(result.messages.at(-1).content);

@@ -1,6 +1,7 @@
 import { Document } from "@langchain/core/documents";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import { PGVectorStore } from "@langchain/community/vectorstores/pgvector";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { TaskType } from "@google/generative-ai";
 import dotenv from "dotenv";
@@ -14,7 +15,19 @@ const embeddings = new GoogleGenerativeAIEmbeddings({
 });
 
 // storing the vector generated in memory
-export const vectorStore = new MemoryVectorStore(embeddings);
+export const vectorStore = await PGVectorStore.initialize(embeddings, {
+   postgresConnectionOptions : {
+      connectionString: process.env.DB_URL,
+   },
+   tableName: 'transcripts',
+   columns: {
+    idColumnName: 'id',
+    vectorColumnName: 'vector',
+    contentColumnName: 'content',
+    metadataColumnName: 'metadata'
+   },
+   distanceStrategy: 'cosine'
+});
 
 export const addYTVideoToVectorStore = async(videoData)=> {
 
