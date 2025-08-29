@@ -2,13 +2,15 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { agent } from "./agent.js";
+import { addYTVideoToVectorStore } from "./embeddings.js";
 
 dotenv.config();
 
 const PORT = process.env.PORT || 3000;
 
 const app = express();
-app.use(express.json());
+
+app.use(express.json({ limit: '200mb' }));
 app.use(express.urlencoded());
 app.use(cors());
 
@@ -19,7 +21,8 @@ app.get("/", (req, res) => {
 app.post("/generate", async (req, res) => {
     console.log(req.body);
     
-  const { video_id, query, thread_id } = req.body;
+  const { query, thread_id } = req.body;
+
   const result = await agent.invoke(
     {
       messages: [
@@ -29,7 +32,7 @@ app.post("/generate", async (req, res) => {
         },
       ],
     },
-    { configurable: { thread_id, video_id } }
+    { configurable: { thread_id } }
   );
   console.log(result.messages.at(-1).content);
   res.send(result.messages.at(-1).content);

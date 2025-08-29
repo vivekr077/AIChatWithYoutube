@@ -1,4 +1,5 @@
 import { fetchTranscript } from 'youtube-transcript-plus';
+import { addYTVideoToVectorStore } from './embeddings.js';
 
 class YouTubeScraper {
     constructor() {}
@@ -106,6 +107,15 @@ class YouTubeScraper {
 
         const transcriptData = await this.getTranscript(videoId);
         console.log("transcripts are: ", transcriptData);
+
+         if (transcriptData.success) {
+            await addYTVideoToVectorStore({
+            videoId: videoId,
+            transcript: transcriptData.transcript.text,
+            segments: transcriptData.transcript.segments,
+            metadata: transcriptData.metadata
+            });
+        }
         
         return {
             success: transcriptData.success,
