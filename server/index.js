@@ -20,8 +20,6 @@ app.post("/generate", async (req, res) => {
     console.log(req.body);
     
   const { video_id, query, thread_id } = req.body;
-  console.log(video_id, query);
-
   const result = await agent.invoke(
     {
       messages: [

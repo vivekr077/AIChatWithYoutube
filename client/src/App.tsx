@@ -57,7 +57,6 @@ function App() {
         body: JSON.stringify({
           query: userMessage.text,
           thread_id: threadId,
-          video_id: 'vr1JL6Fi6K4'
         }),
       });
 

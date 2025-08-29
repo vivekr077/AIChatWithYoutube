@@ -6,7 +6,8 @@ import { TaskType } from "@google/generative-ai";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { MemorySaver } from "@langchain/langgraph";
 import { tool } from "@langchain/core/tools";
-import { vectorStore, addYTVideoToVectorStore } from "./embeddings.js";
+import { vectorStore, addYTVideoToVectorStore } from "./embeddings.js"
+import { YouTubeScraper } from "./ScrapVideo.js";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import dotenv from "dotenv";
 import data from "./data.js";
@@ -19,20 +20,34 @@ const video_id = 'vr1JL6Fi6K4'
 const app = express();
 const port = 3000;
 
-// const video1 = data[0];
-// await addYTVideoToVectorStore(data[0]);
-// await addYTVideoToVectorStore(data[1]);
-
-
 const llm = new ChatGoogleGenerativeAI({
   model: "gemini-2.0-flash",
   temperature: 0,
 });
 
-
+//triggerYouTubeVideo tool
+const triggerYouTubeVideoScrapeTool = tool(
+  async({ url }) => {
+    console.log("Triggering youtube video scraper", url);
+    const scraper = new YouTubeScraper();
+    const result = await scraper.scrapeVideo(url);
+    console.log(result);
+    return result;
+  }, {
+    name: 'triggerYouTubeVideoScrape',
+    description: 
+      `Trigger the scraping of a youtube video using the url.
+       The tool start a scraping job, that usually take 5 seconds
+       The tool will return a video_id that can be check the status of the scraping job
+       Use the tool only if the video is not in the vector store already`,
+    schema: z.object({
+      url: z.string().describe("The YouTube video URL to scrape")
+    })
+  }
+)
 // retrieval tool
 const retrieveTool = tool(
-  async ({ query }, {configurable: {video_id}}) => {
+  async ({ query, video_id }, {configurable: {}}) => {
     console.log("=== Retrieval Tool Called ===");
     console.log("Query:", query);
     console.log("Video ID:", video_id);
@@ -88,6 +103,7 @@ const retrieveTool = tool(
     
     schema: z.object({
       query: z.string().describe("Search keywords. For general questions use broad terms like 'main topics summary content'. For specific questions, include all relevant terms from the user's question."),
+      video_id: z.string().describe('the id of the video to retrieve.')
     }),
   }
 );
@@ -101,7 +117,7 @@ const memorySaver = new MemorySaver();
 
 export const agent = createReactAgent({
   llm,
-  tools: [retrieveTool],
+  tools: [retrieveTool, triggerYouTubeVideoScrapeTool],
   checkpointer: memorySaver,
 });
 
