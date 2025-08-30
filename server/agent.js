@@ -21,11 +21,16 @@ const llm = new ChatGoogleGenerativeAI({
 //triggerYouTubeVideo tool
 const triggerYouTubeVideoScrapeTool = tool(
   async({ url }) => {
-    console.log("Triggering youtube video scraper", url);
-    const scraper = new YouTubeScraper();
-    const result = await scraper.scrapeVideo(url);
-    console.log("result is: ", result);
-    return result;
+    try {
+      console.log("Triggering youtube video scraper", url);
+      const scraper = new YouTubeScraper();
+      const result = await scraper.scrapeVideo(url);
+      console.log("result is: ", result);
+      return result;
+    } catch (error) {
+      console.error("Error in triggerYouTubeVideoScrapeTool:", error);
+      throw new Error(`Failed to scrape YouTube video: ${error.message}`);
+    }
   }, {
     name: 'triggerYouTubeVideoScrape',
     description: 
@@ -38,80 +43,29 @@ const triggerYouTubeVideoScrapeTool = tool(
     })
   }
 )
-// retrieval tool
-// const retrieveTool = tool(
-//   async ({ query, video_id }, {configurable: {}}) => {    
-//     try {
-//       // Fix the filter syntax - it should be a function
-//       const retrievedDocs = await vectorStore.similaritySearch(
-//         query, 
-//         5, // Increase to 5 for better coverage
-//         {
-//           filter: {
-//             video_id: video_id
-//           }
-//         }
-//       );
-      
-//       console.log(`Found ${retrievedDocs.length} relevant chunks`);
-      
-//       if (retrievedDocs.length === 0) {
-//         return `No content found for video ${video_id}. The video might not be in the database or the search query didn't match any content.`;
-//       }
-      
-//       // Add context to the response
-//       const serializedDocs = retrievedDocs
-//         .map((doc, index) => `[Segment ${index + 1}]\n${doc.pageContent}`)
-//         .join("\n\n---\n\n");
-
-//       return `Here are the relevant segments from the video transcript:\n\n${serializedDocs}`;
-      
-//     } catch (error) {
-//       console.error("Error in retrieval:", error);
-//       return "Error retrieving video content. Please try again.";
-//     }
-//   },
-//   {
-//     name: "retrieve_video_content",
-//     description: `This tool searches and retrieves relevant segments from a YouTube video transcript.
-
-//     WHEN TO USE THIS TOOL:
-//     - ANY question about what is explained, discussed, or shown in a video
-//     - Questions about video content, topics, themes, or specific information
-//     - Requests for summaries or overviews of the video
-//     - Questions about specific people, events, or concepts mentioned in the video
-    
-//     HOW TO USE:
-//     - For general video overview: use queries like "main topics content summary overview"
-//     - For specific topics: use the exact terms from the user's question
-//     - For people mentioned: include their names in the query
-//     - Always cast a wide net with your search terms to ensure comprehensive results
-    
-//     WHAT IT RETURNS:
-//     - Relevant transcript segments that match the search query
-//     - Multiple segments are returned to provide context
-//     - Use all returned segments to form a comprehensive answer
-    
-//     IMPORTANT: This tool MUST be used for ANY question about video content. Never answer questions about videos without first retrieving the actual transcript content.`,
-    
-//     schema: z.object({
-//       query: z.string().describe("Search keywords. For general questions use broad terms like 'main topics summary content'. For specific questions, include all relevant terms from the user's question."),
-//       video_id: z.string().describe('the id of the video to retrieve.')
-//     }),
-//   }
-// );
 
 const retrieveTool = tool(
   async ({ query, video_id }, { configurable: {} }) => {
-    const retrievedDocs = await vectorStore.similaritySearch(query, 3, {
-      video_id,
-    });
+    try {
+      const retrievedDocs = await vectorStore.similaritySearch(query, 3, {
+        video_id,
+      });
 
-    const serializedDocs = retrievedDocs
-      .map((doc) => doc.pageContent)
-      .join('\n ');
+      const serializedDocs = retrievedDocs
+        .map((doc) => doc.pageContent)
+        .join('\n ');
 
-    return serializedDocs;
+      return serializedDocs;
+    } catch (error) {
+      console.error("Error in retrieveTool:", error);
+      
+      // Handle database connection errors
+      if (error.message && error.message.includes('Connection terminated')) {
+        throw new Error("Database connection issue. Please try again in a moment.");
+      }
+      
+      throw new Error(`Failed to retrieve documents: ${error.message}`);
+    }
   },
   {
     name: 'retrieve',
@@ -129,11 +83,22 @@ const checkpointer = new MemorySaver();
 // retrieveal similar videos tool
 const retrieveSimilarVideosTool = tool(
   async ({ query }) => {
-    const retrievedDocs = await vectorStore.similaritySearch(query, 30);
+    try {
+      const retrievedDocs = await vectorStore.similaritySearch(query, 30);
 
-    const ids = retrievedDocs.map((doc) => doc.metadata.video_id).join('\n ');
+      const ids = retrievedDocs.map((doc) => doc.metadata.video_id).join('\n ');
 
-    return ids;
+      return ids;
+    } catch (error) {
+      console.error("Error in retrieveSimilarVideosTool:", error);
+      
+      // Handle database connection errors
+      if (error.message && error.message.includes('Connection terminated')) {
+        throw new Error("Database connection issue. Please try again in a moment.");
+      }
+      
+      throw new Error(`Failed to retrieve similar videos: ${error.message}`);
+    }
   },
   {
     name: 'retrieveSimilarVideos',
@@ -143,12 +108,6 @@ const retrieveSimilarVideosTool = tool(
     }),
   }
 );
-
-
-// console.log("Testing vector store...");
-// const testDocs = await vectorStore.similaritySearch("video", 3);
-// console.log(testDocs);
-// console.log("Test search found", testDocs.length, "documents");
 
 export const agent = createReactAgent({
   llm,

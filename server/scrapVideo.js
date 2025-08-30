@@ -17,7 +17,8 @@ class YouTubeScraper {
             /(?:youtube\.com\/watch\?v=)([^&\n?#]+)/,
             /(?:youtube\.com\/embed\/)([^&\n?#]+)/,
             /(?:youtube\.com\/v\/)([^&\n?#]+)/,
-            /(?:m\.youtube\.com\/watch\?v=)([^&\n?#]+)/
+            /(?:m\.youtube\.com\/watch\?v=)([^&\n?#]+)/,
+            /(?:youtube\.com\/live\/)([^&\n?#]+)/ 
         ];
 
         for (const pattern of patterns) {
