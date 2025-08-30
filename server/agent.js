@@ -6,7 +6,7 @@ import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { MemorySaver } from "@langchain/langgraph";
 import { tool } from "@langchain/core/tools";
 import { vectorStore, addYTVideoToVectorStore } from "./embeddings.js"
-import { YouTubeScraper } from "./ScrapVideo.js";
+import { YouTubeScraper } from "./scrapVideo.js";
 import dotenv from "dotenv";
 import z from "zod";
 // import { YoutubeLoader } from "@langchain/community/document_loaders/web/youtube";

@@ -15,7 +15,7 @@ app.use(express.urlencoded());
 app.use(cors());
 
 app.get("/", (req, res) => {
-  res.send("Hello World");
+  res.send("Hello World!");
 });
 
 app.post("/generate", async (req, res) => {
